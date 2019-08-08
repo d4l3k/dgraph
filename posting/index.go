@@ -17,7 +17,6 @@
 package posting
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
@@ -499,37 +498,40 @@ func (r *rebuild) Run(ctx context.Context) error {
 	// global lcache (the LRU cache).
 	txn := NewTxn(r.startTs)
 
-	var prevKey []byte
-	for it.Rewind(); it.Valid(); {
-		item := it.Item()
-		if bytes.Equal(item.Key(), prevKey) {
-			it.Next()
-			continue
-		}
-		key := item.KeyCopy(nil)
-		prevKey = key
+	glog.Infof("No build index is set! Refusing to rebuild index.")
+	/*
+		var prevKey []byte
+		for it.Rewind(); it.Valid(); {
+			item := it.Item()
+			if bytes.Equal(item.Key(), prevKey) {
+				it.Next()
+				continue
+			}
+			key := item.KeyCopy(nil)
+			prevKey = key
 
-		pk := x.Parse(key)
-		if pk == nil {
-			it.Next()
-			continue
-		}
+			pk := x.Parse(key)
+			if pk == nil {
+				it.Next()
+				continue
+			}
 
-		// We should return quickly if the context is no longer valid.
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
+			// We should return quickly if the context is no longer valid.
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
 
-		l, err := ReadPostingList(key, it)
-		if err != nil {
-			return err
+			l, err := ReadPostingList(key, it)
+			if err != nil {
+				return err
+			}
+			if err := r.fn(pk.Uid, l, txn); err != nil {
+				return err
+			}
 		}
-		if err := r.fn(pk.Uid, l, txn); err != nil {
-			return err
-		}
-	}
+	*/
 	glog.V(1).Infof("Rebuild: Iteration done. Now commiting at ts=%d\n", r.startTs)
 
 	txn.Update() // Convert data into deltas.
